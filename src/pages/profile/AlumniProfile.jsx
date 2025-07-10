@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { Briefcase, Save, Linkedin } from 'lucide-react';
+import { Briefcase, Save, Linkedin,GraduationCap, Camera, Upload, X } from 'lucide-react';
 import axios from 'axios';
 
 const AlumniProfile = () => {

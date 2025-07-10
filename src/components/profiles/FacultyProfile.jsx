@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Crown, BookOpen, Award, Microscope } from 'lucide-react';
+import { ArrowLeft, Crown, BookOpen, Award, Microscope, User } from 'lucide-react';
 import { profileService } from '../../components/services/profileService';
 import { toast } from 'react-toastify';
 
