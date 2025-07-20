@@ -13,7 +13,8 @@ import {
   Shield,
   Circle,
   Plus,
-  X
+  X,
+  ZoomIn
 } from 'lucide-react';
 import axios from 'axios';
 import { toast } from 'react-toastify';
@@ -42,12 +43,18 @@ const Chat = () => {
   // Reaction states
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [selectedMessageId, setSelectedMessageId] = useState(null);
+  const [emojiPickerFromModal, setEmojiPickerFromModal] = useState(false);
+  
+  // Image modal states
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null);
   
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const chatMessagesRef = useRef(null);
   const scrollTimeoutRef = useRef(null);
   const emojiPickerRef = useRef(null);
+  const imageModalRef = useRef(null);
 
   // WhatsApp-like emoji reactions
   const reactionEmojis = ['❤️', '😂', '😮', '😢', '😡', '👍', '👎', '🔥', '💯', '🎉', '👏', '🤔', '😍', '🥰', '😘'];
@@ -146,6 +153,7 @@ const Chat = () => {
       if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target)) {
         setShowEmojiPicker(false);
         setSelectedMessageId(null);
+        setEmojiPickerFromModal(false);
       }
     };
 
@@ -157,6 +165,42 @@ const Chat = () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [showEmojiPicker]);
+
+  // Close image modal when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (imageModalRef.current && !imageModalRef.current.contains(event.target)) {
+        setShowImageModal(false);
+        setSelectedImage(null);
+      }
+    };
+
+    if (showImageModal) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showImageModal]);
+
+  // Handle ESC key to close image modal
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape' && showImageModal) {
+        setShowImageModal(false);
+        setSelectedImage(null);
+      }
+    };
+
+    if (showImageModal) {
+      document.addEventListener('keydown', handleKeyDown);
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [showImageModal]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -353,9 +397,10 @@ const Chat = () => {
   };
 
   // Show emoji picker for message
-  const handleShowEmojiPicker = (messageId) => {
+  const handleShowEmojiPicker = (messageId, fromModal = false) => {
     setSelectedMessageId(messageId);
     setShowEmojiPicker(true);
+    setEmojiPickerFromModal(fromModal);
   };
 
   // Add reaction to message
@@ -375,6 +420,7 @@ const Chat = () => {
       // Close emoji picker
       setShowEmojiPicker(false);
       setSelectedMessageId(null);
+      setEmojiPickerFromModal(false);
       
       toast.success('Reaction added');
     } catch (error) {
@@ -399,6 +445,15 @@ const Chat = () => {
     } catch (error) {
       toast.error('Error removing reaction');
     }
+  };
+
+  // Handle image click to open modal
+  const handleImageClick = (imageUrl, messageId) => {
+    setSelectedImage({
+      url: imageUrl,
+      messageId: messageId
+    });
+    setShowImageModal(true);
   };
 
   const getRoleIcon = (role) => {
@@ -500,77 +555,76 @@ const Chat = () => {
   };
 
   const renderMessageReactions = (message) => {
-  if (!message.reactions || Object.keys(message.reactions).length === 0) return null;
+    if (!message.reactions || Object.keys(message.reactions).length === 0) return null;
 
-  const groupedReactions = Object.entries(message.reactions).reduce((acc, [reactor, emoji]) => {
-    if (!acc[emoji]) {
-      acc[emoji] = [];
-    }
-    acc[emoji].push(reactor);
-    return acc;
-  }, {});
+    const groupedReactions = Object.entries(message.reactions).reduce((acc, [reactor, emoji]) => {
+      if (!acc[emoji]) {
+        acc[emoji] = [];
+      }
+      acc[emoji].push(reactor);
+      return acc;
+    }, {});
 
-  return (
-    <div style={{
-      position: 'absolute',
-      bottom: '-8px',
-      right: '-8px',
-      display: 'flex',
-      flexWrap: 'wrap',
-      gap: '2px',
-      zIndex: 10
-    }}>
-      {Object.entries(groupedReactions).map(([emoji, reactors]) => {
-        const hasUserReacted = reactors.includes(user.username);
-        const count = reactors.length;
+    return (
+      <div style={{
+        position: 'absolute',
+        bottom: '-8px',
+        right: '-8px',
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: '2px',
+        zIndex: 10
+      }}>
+        {Object.entries(groupedReactions).map(([emoji, reactors]) => {
+          const hasUserReacted = reactors.includes(user.username);
+          const count = reactors.length;
 
-        return (
-          <div
-            key={emoji}
-            onClick={() => {
-              if (hasUserReacted) {
-                handleRemoveReaction(message.id);
-              } else {
-                handleAddReaction(message.id, emoji);
-              }
-            }}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '2px',
-              padding: '2px 6px',
-              borderRadius: '12px',
-              fontSize: '0.7rem',
-              cursor: 'pointer',
-              backgroundColor: hasUserReacted ? '#dcf8c6' : 'white',
-              border: hasUserReacted ? '1px solid #4fc3f7' : '1px solid #e0e0e0',
-              color: hasUserReacted ? '#2e7d32' : '#666',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-              minWidth: '24px',
-              height: '20px',
-              justifyContent: 'center',
-              transition: 'all 0.2s ease',
-              transform: 'scale(1)'
-            }}
-            onMouseEnter={(e) => {
-              e.target.style.transform = 'scale(1.1)';
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.transform = 'scale(1)';
-            }}
-            title={`${reactors.join(', ')} reacted with ${emoji}`}
-          >
-            <span style={{ fontSize: '0.75rem' }}>{emoji}</span>
-            {count > 1 && (
-              <span style={{ fontSize: '0.65rem', fontWeight: 'bold' }}>{count}</span>
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-};
-
+          return (
+            <div
+              key={emoji}
+              onClick={() => {
+                if (hasUserReacted) {
+                  handleRemoveReaction(message.id);
+                } else {
+                  handleAddReaction(message.id, emoji);
+                }
+              }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '2px',
+                padding: '2px 6px',
+                borderRadius: '12px',
+                fontSize: '0.7rem',
+                cursor: 'pointer',
+                backgroundColor: hasUserReacted ? '#dcf8c6' : 'white',
+                border: hasUserReacted ? '1px solid #4fc3f7' : '1px solid #e0e0e0',
+                color: hasUserReacted ? '#2e7d32' : '#666',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                minWidth: '24px',
+                height: '20px',
+                justifyContent: 'center',
+                transition: 'all 0.2s ease',
+                transform: 'scale(1)'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.transform = 'scale(1.1)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.transform = 'scale(1)';
+              }}
+              title={`${reactors.join(', ')} reacted with ${emoji}`}
+            >
+              <span style={{ fontSize: '0.75rem' }}>{emoji}</span>
+              {count > 1 && (
+                <span style={{ fontSize: '0.65rem', fontWeight: 'bold' }}>{count}</span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
 
   const renderUserCard = (userInfo) => (
     <div
@@ -767,7 +821,7 @@ const Chat = () => {
                     
                     {/* Reaction + button */}
                     <button
-                      onClick={() => handleShowEmojiPicker(message.id)}
+                      onClick={() => handleShowEmojiPicker(message.id, false)}
                       style={{
                         background: 'rgba(0,0,0,0.1)',
                         border: 'none',
@@ -802,11 +856,50 @@ const Chat = () => {
                   {message.fileUrl && (
                     <div style={{ marginTop: '0.5rem' }}>
                       {isImageFile(message.fileUrl) ? (
-                        <img
-                          src={message.fileUrl}
-                          alt="Shared image"
-                          style={{ maxWidth: '200px', maxHeight: '200px', borderRadius: '8px' }}
-                        />
+                        <div style={{ position: 'relative', display: 'inline-block' }}>
+                          <img
+                            src={message.fileUrl}
+                            alt="Shared image"
+                            onClick={() => handleImageClick(message.fileUrl, message.id)}
+                            style={{ 
+                              maxWidth: '200px', 
+                              maxHeight: '200px', 
+                              borderRadius: '8px',
+                              cursor: 'pointer',
+                              transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                              boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.target.style.transform = 'scale(1.02)';
+                              e.target.style.boxShadow = '0 4px 16px rgba(0,0,0,0.2)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.target.style.transform = 'scale(1)';
+                              e.target.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+                            }}
+                          />
+                          {/* Zoom indicator overlay */}
+                          <div
+                            style={{
+                              position: 'absolute',
+                              top: '8px',
+                              right: '8px',
+                              backgroundColor: 'rgba(0,0,0,0.6)',
+                              borderRadius: '50%',
+                              width: '24px',
+                              height: '24px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              opacity: 0,
+                              transition: 'opacity 0.2s ease',
+                              pointerEvents: 'none'
+                            }}
+                            className="zoom-indicator"
+                          >
+                            <ZoomIn size={12} color="white" />
+                          </div>
+                        </div>
                       ) : isPdfFile(message.fileUrl) ? (
                         <div className="d-flex align-items-center gap-2">
                           <div style={{ padding: '0.5rem', background: '#f0f0f0', borderRadius: '4px' }}>
@@ -849,6 +942,168 @@ const Chat = () => {
             <div ref={messagesEndRef} />
           </div>
 
+          {/* Image Modal */}
+          {showImageModal && selectedImage && (
+            <div
+              style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: 'rgba(0,0,0,0.9)',
+                zIndex: 2000,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '20px'
+              }}
+              onClick={() => {
+                setShowImageModal(false);
+                setSelectedImage(null);
+              }}
+            >
+              <div
+                ref={imageModalRef}
+                style={{
+                  position: 'relative',
+                  maxWidth: '80vw',
+                  maxHeight: '80vh',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  backgroundColor: 'white',
+                  borderRadius: '12px',
+                  padding: '20px',
+                  boxShadow: '0 20px 60px rgba(0,0,0,0.5)'
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Close button */}
+                <button
+                  onClick={() => {
+                    setShowImageModal(false);
+                    setSelectedImage(null);
+                  }}
+                  style={{
+                    position: 'absolute',
+                    top: '10px',
+                    right: '10px',
+                    background: 'rgba(0,0,0,0.1)',
+                    border: 'none',
+                    borderRadius: '50%',
+                    width: '36px',
+                    height: '36px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    color: '#666',
+                    fontSize: '18px',
+                    fontWeight: 'bold',
+                    transition: 'background-color 0.2s ease',
+                    zIndex: 2001
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.backgroundColor = 'rgba(0,0,0,0.2)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.backgroundColor = 'rgba(0,0,0,0.1)';
+                  }}
+                >
+                  <X size={20} />
+                </button>
+
+                {/* Image */}
+                <img
+                  src={selectedImage.url}
+                  alt="Enlarged view"
+                  style={{
+                    maxWidth: 'calc(80vw - 40px)',
+                    maxHeight: 'calc(80vh - 120px)',
+                    width: 'auto',
+                    height: 'auto',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+                    objectFit: 'contain',
+                    display: 'block'
+                  }}
+                />
+
+                {/* Download button */}
+                <div style={{ 
+                  marginTop: '16px',
+                  display: 'flex',
+                  gap: '12px'
+                }}>
+                  <a
+                    href={selectedImage.url}
+                    download
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      padding: '8px 16px',
+                      backgroundColor: '#667eea',
+                      color: 'white',
+                      textDecoration: 'none',
+                      borderRadius: '6px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      fontSize: '0.9rem',
+                      transition: 'background-color 0.2s ease'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.target.style.backgroundColor = '#5a67d8';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.backgroundColor = '#667eea';
+                    }}
+                  >
+                    <Download size={16} />
+                    Download
+                  </a>
+                  
+                  <button
+                    onClick={() => handleShowEmojiPicker(selectedImage.messageId, true)}
+                    style={{
+                      padding: '8px 16px',
+                      backgroundColor: '#48bb78',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      fontSize: '0.9rem',
+                      cursor: 'pointer',
+                      transition: 'background-color 0.2s ease'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.target.style.backgroundColor = '#38a169';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.backgroundColor = '#48bb78';
+                    }}
+                  >
+                    <Plus size={16} />
+                    React
+                  </button>
+                </div>
+
+                {/* Instructions */}
+                <p style={{
+                  color: '#666',
+                  fontSize: '0.8rem',
+                  marginTop: '12px',
+                  textAlign: 'center'
+                }}>
+                  Click outside to close • Press ESC to close
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Emoji Picker Modal */}
           {showEmojiPicker && selectedMessageId && (
             <div
@@ -859,7 +1114,7 @@ const Chat = () => {
                 right: 0,
                 bottom: 0,
                 backgroundColor: 'rgba(0,0,0,0.5)',
-                zIndex: 1000,
+                zIndex: emojiPickerFromModal ? 2500 : 1000,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center'
@@ -892,6 +1147,7 @@ const Chat = () => {
                     onClick={() => {
                       setShowEmojiPicker(false);
                       setSelectedMessageId(null);
+                      setEmojiPickerFromModal(false);
                     }}
                     style={{
                       background: 'none',
@@ -1057,11 +1313,11 @@ const Chat = () => {
               <div className="mt-3">
                 <div style={{ marginBottom: '1rem', padding: '0.75rem', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #e9ecef' }}>
                   <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: '600', color: '#495057', marginBottom: '4px' }}>
-                    💡 How to react:
+                    💡 How to interact:
                   </p>
                   <ul style={{ margin: 0, paddingLeft: '16px', fontSize: '0.8rem', color: '#6c757d' }}>
-                    <li>Click the + button on any message</li>
-                    <li>Choose an emoji from the picker</li>
+                    <li>Click + on messages to react</li>
+                    <li>Click images to view full size</li>
                     <li>Click existing reactions to toggle</li>
                   </ul>
                 </div>
@@ -1084,6 +1340,13 @@ const Chat = () => {
           )}
         </div>
       </div>
+
+      {/* Add CSS for hover effects */}
+      <style jsx>{`
+        .message img:hover + .zoom-indicator {
+          opacity: 1 !important;
+        }
+      `}</style>
     </div>
   );
 };
