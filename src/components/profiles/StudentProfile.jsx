@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, User, BookOpen, Calendar, Github, Code } from 'lucide-react';
+import { ArrowLeft, User, BookOpen, Calendar, Github, Code, IdCard, Linkedin } from 'lucide-react';
 import { profileService } from '../../components/services/profileService';
 import { toast } from 'react-toastify';
 
@@ -98,29 +98,31 @@ const StudentProfile = () => {
                 </div>
               </div>
             </div>
-            <div className="d-flex align-items-center gap-3">
-              <div className="connection-avatar" style={{ width: '60px', height: '60px', fontSize: '1.5rem' }}>
-                {profile.name ? profile.name.charAt(0).toUpperCase() : username.charAt(0).toUpperCase()}
-              </div>
-              <div style={{ flex: 1 }}>
+           <div className="d-flex align-items-center justify-content-center gap-3 mt-3">
+              <div style={{ textAlign: 'center' }}>
                 <h2 style={{ margin: 0, fontSize: '1.5rem', color: '#2563eb' }}>
                   {profile.name || username}
                 </h2>
-                <div className="d-flex align-items-center gap-2 mt-2">
+                <p style={{ margin: '0.5rem 0', color: '#6c757d', fontSize: '1.1rem' }}>
+                  @{username}
+                </p>
+                <div className="d-flex align-items-center justify-content-center gap-2 mt-2">
                   <span style={{
-                    backgroundColor: '#f3f4f6',
+                   backgroundColor: '#f3f4f6',
                     color: '#4b5563',
                     border: '1px solid #d1d5db',
-                    padding: '4px 12px',
-                    borderRadius: '12px',
-                    fontSize: '0.875rem',
-                    fontWeight: '500',
+                    padding: '6px 16px',
+                    borderRadius: '16px',
+                    fontSize: '0.9rem',
+                    fontWeight: '600',
                     display: 'inline-flex',
                     alignItems: 'center',
-                    gap: '6px'
+                    gap: '8px',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px'
                   }}>
-                    <User size={14} />
-                    STUDENT
+                    <User size={16} />
+                    ALUMNI
                   </span>
                 </div>
               </div>
@@ -151,6 +153,24 @@ const StudentProfile = () => {
                 <div>
                   <p style={{ margin: 0, fontSize: '0.875rem', opacity: 0.7 }}>Department</p>
                   <p style={{ margin: 0, fontWeight: '500' }}>{profile.department || 'Not specified'}</p>
+    
+                </div>
+              </div>
+              <div className="d-flex align-items-center gap-3 mb-3">
+                <div style={{ 
+                  backgroundColor: '#dbeafe', 
+                  padding: '8px', 
+                  borderRadius: '8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <IdCard size={16} style={{ color: '#2563eb' }} />
+                </div>
+                <div>
+                  <p style={{ margin: 0, fontSize: '0.875rem', opacity: 0.7 }}>Enroll Number</p>
+                  <p style={{ margin: 0, fontWeight: '500' }}>{profile.enrollNumber || 'Not specified'}</p>
+    
                 </div>
               </div>
               <div className="d-flex align-items-center gap-3">
@@ -245,6 +265,48 @@ const StudentProfile = () => {
                     onMouseOut={(e) => e.target.style.textDecoration = 'none'}
                   >
                     {profile.github}
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {profile.github && (
+          <div className="card">
+            <div className="card-header">
+              <div className="d-flex align-items-center gap-2">
+                <Linkedin size={20} style={{ color: '#374151' }} />
+                <h3 className="card-title">Linkedin Profile</h3>
+              </div>
+            </div>
+            <div style={{ padding: '1rem 0' }}>
+              <div className="d-flex align-items-center gap-3">
+                <div style={{ 
+                  backgroundColor: '#f3f4f6', 
+                  padding: '8px', 
+                  borderRadius: '8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <Linkedin size={16} style={{ color: '#374151' }} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <p style={{ margin: 0, fontSize: '0.875rem', opacity: 0.7 }}>Linkedin</p>
+                  <a
+                    href={profile.linkedin.startsWith('http') ? profile.linkedin : `https://linkedin.com/in/${profile.linkedin}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      color: '#2563eb',
+                      textDecoration: 'none',
+                      fontWeight: '500'
+                    }}
+                    onMouseOver={(e) => e.target.style.textDecoration = 'underline'}
+                    onMouseOut={(e) => e.target.style.textDecoration = 'none'}
+                  >
+                    {profile.linkedin}
                   </a>
                 </div>
               </div>

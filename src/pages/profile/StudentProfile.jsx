@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { GraduationCap, Save, Github, Camera, Upload, X } from 'lucide-react';
+import { GraduationCap, Save, Github, Camera, Upload, X, Linkedin } from 'lucide-react';
 import axios from 'axios';
 
 const StudentProfile = () => {
@@ -12,6 +12,8 @@ const StudentProfile = () => {
     year: '',
     skills: '',
     github: '',
+    linkedin:'',
+    enrollNumber:'',
     profileImage: null
   });
   const [loading, setLoading] = useState(false);
@@ -83,7 +85,9 @@ const StudentProfile = () => {
       department: formData.department,
       year: formData.year,
       skills: formData.skills,
-      github: formData.github
+      github: formData.github,
+      linkedin:formData.linkedin,
+      enrollNumber:formData.enrollNumber
     };
 
     formDataToSend.append(
@@ -252,6 +256,20 @@ const StudentProfile = () => {
             </div>
 
             <div className="form-group">
+              <label htmlFor="enrollNumber" className="form-label">Enroll Number</label>
+              <input
+                type="text"
+                id="enrollNumber"
+                name="enrollNumber"
+                className="form-control"
+                value={formData.enrollNumber}
+                onChange={handleChange}
+                required
+                placeholder="238497"
+              />
+            </div>
+
+            <div className="form-group">
               <label htmlFor="year" className="form-label">Year of Study</label>
               <select
                 id="year"
@@ -293,6 +311,18 @@ const StudentProfile = () => {
                 value={formData.github}
                 onChange={handleChange}
                 placeholder="https://github.com/yourusername"
+              />
+            </div>
+             <div className="form-group">
+              <label htmlFor="linkedin" className="form-label">Linkedin Profile</label>
+              <input
+                type="url"
+                id="linkedin"
+                name="linkedin"
+                className="form-control"
+                value={formData.linkedin}
+                onChange={handleChange}
+                placeholder="https://www.linkedin.com/in/username"
               />
             </div>
 
@@ -337,12 +367,34 @@ const StudentProfile = () => {
               <h5 style={{ marginBottom: '0.5rem', color: '#667eea' }}>Department</h5>
               <p style={{ margin: 0, fontSize: '1.1rem' }}>{formData.department || 'Not provided'}</p>
             </div>
+
+            <div>
+              <h5 style={{ marginBottom: '0.5rem', color: '#667eea' }}>Enroll Number</h5>
+              <p style={{ margin: 0, fontSize: '1.1rem' }}>{formData.enrollNumber|| 'Not provided'}</p>
+            </div>
             
             <div>
               <h5 style={{ marginBottom: '0.5rem', color: '#667eea' }}>Year of Study</h5>
               <p style={{ margin: 0, fontSize: '1.1rem' }}>
                 {formData.year ? `${formData.year}${formData.year === '1' ? 'st' : formData.year === '2' ? 'nd' : formData.year === '3' ? 'rd' : 'th'} Year` : 'Not provided'}
               </p>
+            </div>
+
+             <div>
+              <h5 style={{ marginBottom: '0.5rem', color: '#667eea' }}>LinkedIn</h5>
+              {formData.linkedin ? (
+                <a 
+                  href={formData.linkedin} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  style={{ color: '#667eea', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                >
+                  <Linkedin size={18} />
+                  View Profile
+                </a>
+              ) : (
+                <p style={{ margin: 0, fontSize: '1.1rem' }}>Not provided</p>
+              )}
             </div>
             
             <div>
