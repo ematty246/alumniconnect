@@ -11,7 +11,9 @@ import {
   Users,
   Crown,
   Shield,
-  Circle
+  Circle,
+  Plus,
+  X
 } from 'lucide-react';
 import axios from 'axios';
 import { toast } from 'react-toastify';
@@ -33,8 +35,22 @@ const Chat = () => {
   const [connectedUsers, setConnectedUsers] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [unreadCounts, setUnreadCounts] = useState({});
+  const [isUserScrolling, setIsUserScrolling] = useState(false);
+  const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
+  const [lastMessageCount, setLastMessageCount] = useState(0);
+  
+  // Reaction states
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [selectedMessageId, setSelectedMessageId] = useState(null);
+  
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
+  const chatMessagesRef = useRef(null);
+  const scrollTimeoutRef = useRef(null);
+  const emojiPickerRef = useRef(null);
+
+  // WhatsApp-like emoji reactions
+  const reactionEmojis = ['❤️', '😂', '😮', '😢', '😡', '👍', '👎', '🔥', '💯', '🎉', '👏', '🤔', '😍', '🥰', '😘'];
 
   useEffect(() => {
     if (!selectedUser) return;
@@ -47,17 +63,31 @@ const Chat = () => {
       ...prev,
       [selectedUser]: 0
     }));
+    // Reset scroll behavior when switching users
+    setShouldAutoScroll(true);
+    setIsUserScrolling(false);
+    setLastMessageCount(0);
   }, [selectedUser, markAsRead]);
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    // Only auto-scroll if:
+    // 1. Should auto-scroll is enabled
+    // 2. User is not manually scrolling
+    // 3. New messages were added (not just a refresh)
+    if (shouldAutoScroll && !isUserScrolling && messages.length > lastMessageCount) {
+      scrollToBottom();
+    }
+    setLastMessageCount(messages.length);
+  }, [messages, shouldAutoScroll, isUserScrolling, lastMessageCount]);
 
   // Auto-refresh messages and unread counts every 2 seconds for better real-time experience
   useEffect(() => {
     const interval = setInterval(() => {
       if (selectedUser) {
-        fetchChatHistory();
+        // Only fetch if user is not actively scrolling
+        if (!isUserScrolling) {
+          fetchChatHistory();
+        }
       }
       fetchUnreadCounts();
     }, 2000);
@@ -70,6 +100,63 @@ const Chat = () => {
     fetchUnreadCounts();
     fetchConnectedUsers();
   }, []);
+
+  // Handle scroll detection
+  useEffect(() => {
+    const chatContainer = chatMessagesRef.current;
+    if (!chatContainer) return;
+
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = chatContainer;
+      const isAtBottom = scrollHeight - scrollTop <= clientHeight + 50; // 50px threshold
+      
+      // If user scrolls up, disable auto-scroll
+      if (!isAtBottom) {
+        setIsUserScrolling(true);
+        setShouldAutoScroll(false);
+      } else {
+        // If user scrolls back to bottom, re-enable auto-scroll
+        setIsUserScrolling(false);
+        setShouldAutoScroll(true);
+      }
+
+      // Clear any existing timeout
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+
+      // Set a timeout to reset scrolling state after user stops scrolling
+      scrollTimeoutRef.current = setTimeout(() => {
+        setIsUserScrolling(false);
+      }, 1000);
+    };
+
+    chatContainer.addEventListener('scroll', handleScroll);
+    return () => {
+      chatContainer.removeEventListener('scroll', handleScroll);
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Close emoji picker when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target)) {
+        setShowEmojiPicker(false);
+        setSelectedMessageId(null);
+      }
+    };
+
+    if (showEmojiPicker) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showEmojiPicker]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -124,8 +211,9 @@ const Chat = () => {
     if (!selectedUser || !user?.username) return;
 
     try {
+      // Use the new endpoint that includes reactions
       const response = await axios.get(
-        `http://localhost:8084/api/chat/history?sender=${user.username}&receiver=${selectedUser}`
+        `http://localhost:8084/api/chat/history/with-reactions?sender=${user.username}&receiver=${selectedUser}`
       );
       setMessages(response.data);
     } catch (error) {
@@ -147,6 +235,9 @@ const Chat = () => {
     }
 
     setLoading(true);
+    // Enable auto-scroll when sending a message
+    setShouldAutoScroll(true);
+    setIsUserScrolling(false);
 
     try {
       if (file) {
@@ -261,6 +352,55 @@ const Chat = () => {
     }
   };
 
+  // Show emoji picker for message
+  const handleShowEmojiPicker = (messageId) => {
+    setSelectedMessageId(messageId);
+    setShowEmojiPicker(true);
+  };
+
+  // Add reaction to message
+  const handleAddReaction = async (messageId, emoji) => {
+    try {
+      await axios.post('http://localhost:8084/api/chat/react', null, {
+        params: {
+          messageId: messageId,
+          reactor: user.username,
+          emoji: emoji
+        }
+      });
+
+      // Refresh chat history to show new reaction
+      await fetchChatHistory();
+      
+      // Close emoji picker
+      setShowEmojiPicker(false);
+      setSelectedMessageId(null);
+      
+      toast.success('Reaction added');
+    } catch (error) {
+      toast.error('Error adding reaction');
+    }
+  };
+
+  // Remove reaction from message
+  const handleRemoveReaction = async (messageId) => {
+    try {
+      await axios.delete('http://localhost:8084/api/chat/react', {
+        params: {
+          messageId: messageId,
+          reactor: user.username
+        }
+      });
+
+      // Refresh chat history to show removed reaction
+      await fetchChatHistory();
+      
+      toast.success('Reaction removed');
+    } catch (error) {
+      toast.error('Error removing reaction');
+    }
+  };
+
   const getRoleIcon = (role) => {
     switch (role) {
       case 'FACULTY':
@@ -359,6 +499,79 @@ const Chat = () => {
            { username: selectedUser, role: 'USER' };
   };
 
+  const renderMessageReactions = (message) => {
+  if (!message.reactions || Object.keys(message.reactions).length === 0) return null;
+
+  const groupedReactions = Object.entries(message.reactions).reduce((acc, [reactor, emoji]) => {
+    if (!acc[emoji]) {
+      acc[emoji] = [];
+    }
+    acc[emoji].push(reactor);
+    return acc;
+  }, {});
+
+  return (
+    <div style={{
+      position: 'absolute',
+      bottom: '-8px',
+      right: '-8px',
+      display: 'flex',
+      flexWrap: 'wrap',
+      gap: '2px',
+      zIndex: 10
+    }}>
+      {Object.entries(groupedReactions).map(([emoji, reactors]) => {
+        const hasUserReacted = reactors.includes(user.username);
+        const count = reactors.length;
+
+        return (
+          <div
+            key={emoji}
+            onClick={() => {
+              if (hasUserReacted) {
+                handleRemoveReaction(message.id);
+              } else {
+                handleAddReaction(message.id, emoji);
+              }
+            }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '2px',
+              padding: '2px 6px',
+              borderRadius: '12px',
+              fontSize: '0.7rem',
+              cursor: 'pointer',
+              backgroundColor: hasUserReacted ? '#dcf8c6' : 'white',
+              border: hasUserReacted ? '1px solid #4fc3f7' : '1px solid #e0e0e0',
+              color: hasUserReacted ? '#2e7d32' : '#666',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+              minWidth: '24px',
+              height: '20px',
+              justifyContent: 'center',
+              transition: 'all 0.2s ease',
+              transform: 'scale(1)'
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.transform = 'scale(1.1)';
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.transform = 'scale(1)';
+            }}
+            title={`${reactors.join(', ')} reacted with ${emoji}`}
+          >
+            <span style={{ fontSize: '0.75rem' }}>{emoji}</span>
+            {count > 1 && (
+              <span style={{ fontSize: '0.65rem', fontWeight: 'bold' }}>{count}</span>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+
   const renderUserCard = (userInfo) => (
     <div
       key={userInfo.username}
@@ -406,6 +619,13 @@ const Chat = () => {
     </div>
   );
 
+  // Function to manually scroll to bottom (for button)
+  const handleScrollToBottom = () => {
+    setShouldAutoScroll(true);
+    setIsUserScrolling(false);
+    scrollToBottom();
+  };
+
   return (
     <div className="fade-in">
       <div className="hero-section">
@@ -415,75 +635,74 @@ const Chat = () => {
 
       <div className="grid grid-3 mb-4" style={{ gridTemplateColumns: '1fr 2fr 1fr' }}>
         {/* User Search and Selection */}
-      <div className="card">
-  <div className="card-header">
-    <h3 className="card-title">Find Users</h3>
-  </div>
+        <div className="card">
+          <div className="card-header">
+            <h3 className="card-title">Find Users</h3>
+          </div>
 
-  <form onSubmit={handleSearchUsers} className="mb-3" style={{ position: 'relative' }}>
-    <div className="search-container" style={{ position: 'relative' }}>
-      <Search className="search-icon" size={16} />
-      <input
-        type="text"
-        className="search-input"
-        placeholder="Search connected users..."
-        value={searchQuery}
-        onChange={(e) => setSearchQuery(e.target.value)}
-        style={{ fontSize: '0.9rem', padding: '0.75rem 0.75rem 0.75rem 2.5rem' }}
-      />
+          <form onSubmit={handleSearchUsers} className="mb-3" style={{ position: 'relative' }}>
+            <div className="search-container" style={{ position: 'relative' }}>
+              <Search className="search-icon" size={16} />
+              <input
+                type="text"
+                className="search-input"
+                placeholder="Search connected users..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{ fontSize: '0.9rem', padding: '0.75rem 0.75rem 0.75rem 2.5rem' }}
+              />
 
-      {isSearching && searchQuery && (
-        <div
-          className="dropdown-results"
-          style={{
-            position: 'absolute',
-            top: '100%',
-            left: 0,
-            right: 0,
-            zIndex: 10,
-            background: '#fff',
-            border: '1px solid #ccc',
-            borderRadius: '4px',
-            maxHeight: '200px',
-            overflowY: 'auto',
-            marginTop: '0.25rem',
-            padding: '0.5rem',
-          }}
-        >
-          {searchResults.length > 0 ? (
-            searchResults.map((userInfo) => renderUserCard(userInfo))
-          ) : (
-            <p className="text-center opacity-50" style={{ fontSize: '0.9rem', margin: 0 }}>
-              No connected users found matching "{searchQuery}"
-            </p>
-          )}
+              {isSearching && searchQuery && (
+                <div
+                  className="dropdown-results"
+                  style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: 0,
+                    right: 0,
+                    zIndex: 10,
+                    background: '#fff',
+                    border: '1px solid #ccc',
+                    borderRadius: '4px',
+                    maxHeight: '200px',
+                    overflowY: 'auto',
+                    marginTop: '0.25rem',
+                    padding: '0.5rem',
+                  }}
+                >
+                  {searchResults.length > 0 ? (
+                    searchResults.map((userInfo) => renderUserCard(userInfo))
+                  ) : (
+                    <p className="text-center opacity-50" style={{ fontSize: '0.9rem', margin: 0 }}>
+                      No connected users found matching "{searchQuery}"
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <button
+              type="submit"
+              className="btn btn-outline w-100 mt-2"
+              style={{ fontSize: '0.9rem', padding: '0.5rem' }}
+            >
+              <Search size={16} />
+              Search
+            </button>
+          </form>
+
+          <div>
+            <h5 style={{ marginBottom: '0.5rem', color: '#667eea', fontSize: '0.9rem' }}>
+              Connected Users
+            </h5>
+            <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+              {connectedUsers.map((userInfo) => renderUserCard(userInfo))}
+            </div>
+          </div>
         </div>
-      )}
-    </div>
-
-    <button
-      type="submit"
-      className="btn btn-outline w-100 mt-2"
-      style={{ fontSize: '0.9rem', padding: '0.5rem' }}
-    >
-      <Search size={16} />
-      Search
-    </button>
-  </form>
-
-  <div>
-    <h5 style={{ marginBottom: '0.5rem', color: '#667eea', fontSize: '0.9rem' }}>
-      Connected Users
-    </h5>
-    <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
-      {connectedUsers.map((userInfo) => renderUserCard(userInfo))}
-    </div>
-  </div>
-</div>
-
 
         {/* Chat Window */}
-        <div className="chat-container">
+        <div className="chat-container" style={{ position: 'relative' }}>
           <div className="chat-header">
             <div className="d-flex justify-content-between align-items-center">
               <div className="d-flex align-items-center gap-2">
@@ -497,19 +716,31 @@ const Chat = () => {
                   <span>Select a user to chat</span>
                 )}
               </div>
-              {selectedUser && (
-                <button
-                  onClick={handleDeleteChat}
-                  className="btn btn-danger"
-                  style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem' }}
-                >
-                  <Trash2 size={14} />
-                </button>
-              )}
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                {selectedUser && !shouldAutoScroll && (
+                  <button
+                    onClick={handleScrollToBottom}
+                    className="btn btn-outline"
+                    style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem' }}
+                    title="Scroll to bottom"
+                  >
+                    ↓
+                  </button>
+                )}
+                {selectedUser && (
+                  <button
+                    onClick={handleDeleteChat}
+                    className="btn btn-danger"
+                    style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem' }}
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 
-          <div className="chat-messages">
+          <div className="chat-messages" ref={chatMessagesRef}>
             {messages.length === 0 ? (
               <div className="text-center opacity-50">
                 <MessageCircle size={48} className="text-primary mb-2" />
@@ -520,9 +751,48 @@ const Chat = () => {
                 <div
                   key={message.id}
                   className={`message ${message.senderUsername === user?.username ? 'sent' : 'received'}`}
+                  style={{ position: 'relative', marginBottom: '16px' }}
                 >
-                  <div style={{ fontSize: '0.8rem', opacity: 0.7, marginBottom: '0.25rem' }}>
-                    {message.senderUsername} • {formatTimestamp(message.timestamp)}
+                  <div style={{ 
+                    fontSize: '0.8rem', 
+                    opacity: 0.7, 
+                    marginBottom: '0.25rem',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}>
+                    <span>
+                      {message.senderUsername} • {formatTimestamp(message.timestamp)}
+                    </span>
+                    
+                    {/* Reaction + button */}
+                    <button
+                      onClick={() => handleShowEmojiPicker(message.id)}
+                      style={{
+                        background: 'rgba(0,0,0,0.1)',
+                        border: 'none',
+                        borderRadius: '50%',
+                        width: '24px',
+                        height: '24px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        opacity: 0.6,
+                        transition: 'all 0.2s ease'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.target.style.opacity = '1';
+                        e.target.style.background = 'rgba(0,0,0,0.2)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.target.style.opacity = '0.6';
+                        e.target.style.background = 'rgba(0,0,0,0.1)';
+                      }}
+                      title="Add reaction"
+                    >
+                      <Plus size={14} />
+                    </button>
                   </div>
                   
                   {message.message && (
@@ -570,11 +840,116 @@ const Chat = () => {
                       )}
                     </div>
                   )}
+                  
+                  {/* WhatsApp-style reactions positioned at bottom-right */}
+                  {renderMessageReactions(message)}
                 </div>
               ))
             )}
             <div ref={messagesEndRef} />
           </div>
+
+          {/* Emoji Picker Modal */}
+          {showEmojiPicker && selectedMessageId && (
+            <div
+              style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: 'rgba(0,0,0,0.5)',
+                zIndex: 1000,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              <div
+                ref={emojiPickerRef}
+                style={{
+                  backgroundColor: 'white',
+                  borderRadius: '20px',
+                  padding: '20px',
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+                  border: '1px solid #e0e0e0',
+                  maxWidth: '320px',
+                  width: '90vw',
+                  maxHeight: '80vh',
+                  overflow: 'auto'
+                }}
+              >
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  alignItems: 'center', 
+                  marginBottom: '16px' 
+                }}>
+                  <h4 style={{ margin: 0, fontSize: '1.1rem', color: '#333', fontWeight: '600' }}>
+                    React to message
+                  </h4>
+                  <button
+                    onClick={() => {
+                      setShowEmojiPicker(false);
+                      setSelectedMessageId(null);
+                    }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: '8px',
+                      borderRadius: '50%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: '#666'
+                    }}
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+                
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(5, 1fr)',
+                  gap: '12px'
+                }}>
+                  {reactionEmojis.map((emoji) => (
+                    <button
+                      key={emoji}
+                      onClick={() => handleAddReaction(selectedMessageId, emoji)}
+                      style={{
+                        backgroundColor: 'transparent',
+                        border: '2px solid #f0f0f0',
+                        fontSize: '1.8rem',
+                        cursor: 'pointer',
+                        padding: '12px',
+                        borderRadius: '12px',
+                        width: '56px',
+                        height: '56px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        transition: 'all 0.2s ease'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.target.style.backgroundColor = '#f8f9fa';
+                        e.target.style.borderColor = '#dee2e6';
+                        e.target.style.transform = 'scale(1.1)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.target.style.backgroundColor = 'transparent';
+                        e.target.style.borderColor = '#f0f0f0';
+                        e.target.style.transform = 'scale(1)';
+                      }}
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
 
           {selectedUser && (
             <form onSubmit={handleSendMessage} className="chat-input">
@@ -680,6 +1055,17 @@ const Chat = () => {
               </div>
               
               <div className="mt-3">
+                <div style={{ marginBottom: '1rem', padding: '0.75rem', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #e9ecef' }}>
+                  <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: '600', color: '#495057', marginBottom: '4px' }}>
+                    💡 How to react:
+                  </p>
+                  <ul style={{ margin: 0, paddingLeft: '16px', fontSize: '0.8rem', color: '#6c757d' }}>
+                    <li>Click the + button on any message</li>
+                    <li>Choose an emoji from the picker</li>
+                    <li>Click existing reactions to toggle</li>
+                  </ul>
+                </div>
+                
                 <button
                   onClick={handleDeleteChat}
                   className="btn btn-danger w-100"

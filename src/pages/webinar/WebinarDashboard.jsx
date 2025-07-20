@@ -401,8 +401,10 @@ const WebinarDashboard = () => {
     <div className="webinar-dashboard">
       <div className="dashboard-header">
         <div className="header-content">
-          <h1 className="dashboard-title">Webinar Dashboard</h1>
-          <p className="dashboard-subtitle">
+          <h1 className="dashboard-title">
+            Webinar Dashboard
+          </h1>
+          <p className="dashboard-subtitle" style={{ color: 'whitesmoke' }}>
             Discover and join live webinars or create your own
           </p>
         </div>

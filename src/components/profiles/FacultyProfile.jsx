@@ -64,16 +64,19 @@ const FacultyProfile = () => {
     }
   return (
     <div className="fade-in">
-      <div className="d-flex align-items-center gap-3 mb-4">
-        <Link to="/connections" className="btn btn-outline">
-          <ArrowLeft size={18} />
-          Back
-        </Link>
-        <div>
-          <h1 className="hero-title" style={{ margin: 0 }}>Faculty Profile</h1>
-          <p className="hero-subtitle" style={{ margin: 0 }}>@{username}</p>
-        </div>
+<div className="d-flex align-items-center justify-content-between gap-3 mb-4">
+      <div>
+        <h1 className="hero-title" style={{ margin: 0 }}>Faculty Profile</h1>
+        <p className="hero-subtitle" style={{ margin: 0 }}>@{username}</p>
       </div>
+
+      <div>
+        <Link to="/connections" className="btn btn-outline d-inline-flex align-items-center">
+          <ArrowLeft size={18} />
+          <span className="ms-2">Back</span>
+        </Link>
+      </div>
+    </div>
 
       <div className="grid grid-1">
         <div className="card">

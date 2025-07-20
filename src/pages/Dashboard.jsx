@@ -163,10 +163,7 @@ const Dashboard = () => {
           </div>
         </div>
         <div className="grid grid-4">
-          <Link to="/search" className="btn btn-outline">
-            <Search size={18} />
-            Find People
-          </Link>
+      
           
           <Link to="/connections" className="btn btn-outline">
             <Users size={18} />

@@ -12,16 +12,17 @@ import Profile from './pages/profile/Profile';
 import StudentProfile from './pages/profile/StudentProfile';
 import AlumniProfile from './pages/profile/AlumniProfile';
 import FacultyProfile from './pages/profile/FacultyProfile';
+import AdminDashboard from './pages/admin/AdminDashboard';
 import Connections from './pages/connections/Connections';
 import PendingRequests from './pages/connections/PendingRequests';
 import Chat from './pages/chat/Chat';
 import UserSearch from './pages/UserSearch';
+import VerifyStudents from './pages/faculty/VerifyStudent';
 
 // Webinar Components
 import WebinarDashboard from './pages/webinar/WebinarDashboard';
 import CreateWebinar from './pages/webinar/CreateWebinar';
 import JoinWebinar from './pages/webinar/JoinWebinar';
-
 
 import { AuthProvider } from './context/AuthContext';
 import { NotificationProvider } from './context/NotificationContext';
@@ -48,7 +49,9 @@ function App() {
                     <Route path="/login" element={<Login />} />
                     <Route path="/register" element={<Register />} />
                     <Route path="/search" element={<UserSearch />} />
-                    
+
+                    <Route path="/admin" element={<AdminDashboard />} />
+
                     {/* Webinar Routes */}
                     <Route path="/webinar" element={<WebinarDashboard />} />
                     <Route path="/webinar/create" element={
@@ -59,6 +62,12 @@ function App() {
                     <Route path="/webinar/join/:id" element={<JoinWebinar />} />
                     <Route path="/webinar/meeting/:id" element={<JoinWebinar />} /> 
                   
+                    {/* Faculty Student Verification */}
+                    <Route path="/verify-students" element={
+                      <ProtectedRoute>
+                        <VerifyStudents />
+                      </ProtectedRoute>
+                    } />
                     
                     {/* Public profile routes - no authentication required */}
                     <Route path="/profile/student/public/:username" element={<PublicStudentProfile />} />

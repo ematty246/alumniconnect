@@ -1,5 +1,5 @@
-import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
   Users,
@@ -8,14 +8,88 @@ import {
   LogOut,
   Home,
   UserPlus,
-  Video
+  Video,
+  UserCheck
 } from 'lucide-react';
-import logo from '../assets/logo.png'; // adjust path if necessary
+import logo from '../assets/logo.png';
 
 const Navbar = () => {
   const { user, logout } = useAuth();
+  const token = localStorage.getItem('token'); 
   const navigate = useNavigate();
+  const location = useLocation();
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [pendingCount, setPendingCount] = useState(0);
 
+  // Fetch unread message count for the logged-in user
+  useEffect(() => {
+    const fetchUnreadCount = async () => {
+      if (user?.username) {
+        try {
+          const response = await fetch(`http://localhost:8084/api/chat/unread/count?receiver=${user.username}`);
+          if (response.ok) {
+            const data = await response.json();
+            const total = Object.values(data).reduce((sum, count) => sum + count, 0);
+            setUnreadCount(total);
+          }
+        } catch (error) {
+          console.error('Error fetching unread count:', error);
+        }
+      }
+    };
+
+    fetchUnreadCount();
+    const interval = setInterval(fetchUnreadCount, 30000);
+
+    return () => clearInterval(interval);
+  }, [user]);
+
+ useEffect(() => {
+  if (!user || !user.role || !token) {
+    console.log("⛔ Skipping fetchPendingCount: user not ready", user);
+    return; // Exit early if user isn't ready
+  }
+
+  const fetchPendingCount = async () => {
+    console.log("📡 Fetching pending count...");
+
+    try {
+      const response = await fetch('http://localhost:8081/auth/pending-count', {
+        method: 'GET',
+        headers: {
+  'Authorization': `Bearer ${token}`,
+  'Content-Type': 'application/json'
+}
+
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const count = Number(data);
+        console.log('✅ Pending student count:', count);
+        setPendingCount(count);
+      } else {
+        console.error('❌ Failed to fetch, status:', response.status);
+      }
+    } catch (err) {
+      console.error('💥 Error fetching:', err);
+    }
+  };
+
+  fetchPendingCount();
+  const interval = setInterval(fetchPendingCount, 30000);
+
+  return () => clearInterval(interval);
+}, [user?.role, user?.token]);
+
+  // Clear unread count when Chat page is opened
+  useEffect(() => {
+    if (location.pathname === '/chat') {
+      setUnreadCount(0);
+    }
+  }, [location]);
+
+ 
   const handleLogout = () => {
     logout();
     navigate('/');
@@ -67,12 +141,31 @@ const Navbar = () => {
                 </Link>
               </li>
 
-              <li>
+              <li className="nav-item-with-badge">
                 <Link to="/chat" className="nav-link">
                   <MessageCircle size={18} />
                   <span className="nav-text">Chat</span>
                 </Link>
+                {unreadCount > 0 && (
+                  <span className="notification-badge">
+                    {unreadCount}
+                  </span>
+                )}
               </li>
+{user.role === 'FACULTY' && (
+  <li className="nav-item-with-badge">
+    <Link to="/verify-students" className="nav-link nav-link-faculty">
+      <UserCheck size={18} />
+      <span className="nav-text">Verify Students</span>
+    </Link>
+    
+    {pendingCount > 0 && (
+      <span className="notification-badge">
+        {pendingCount}
+      </span>
+    )}
+  </li>
+)}
 
               <li>
                 <button onClick={handleLogout} className="nav-link nav-button">

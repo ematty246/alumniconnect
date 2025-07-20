@@ -10,7 +10,7 @@ const AlumniProfile = () => {
     name: '',
     username: '',
     department: '',
-    graduationYear: '',
+    batch: '',
     profession: '',
     linkedin: ''
   });
@@ -81,7 +81,7 @@ const fetchProfile = async () => {
       name: formData.name,
       username: formData.username,
       department: formData.department,
-      graduationYear: formData.graduationYear,
+      batch: formData.batch,
       profession: formData.profession,
       linkedin: formData.linkedin,
    
@@ -118,6 +118,14 @@ const fetchProfile = async () => {
   } finally {
     setLoading(false);
   }
+};
+
+const generateBatchOptions = (startYear, endYear) => {
+  const options = [];
+  for (let year = startYear; year <= endYear; year++) {
+    options.push(`${year}-${year + 4}`);
+  }
+  return options;
 };
 
 
@@ -251,21 +259,24 @@ const fetchProfile = async () => {
               />
             </div>
 
-            <div className="form-group">
-              <label htmlFor="graduationYear" className="form-label">Graduation Year</label>
-              <input
-                type="number"
-                id="graduationYear"
-                name="graduationYear"
-                className="form-control"
-                value={formData.graduationYear}
-                onChange={handleChange}
-                required
-                min="1950"
-                max={new Date().getFullYear()}
-                placeholder="e.g., 2019"
-              />
-            </div>
+           <div className="form-group">
+  <label htmlFor="batch" className="form-label">Batch</label>
+  <select
+    id="batch"
+    name="batch"
+    className="form-control"
+    value={formData.batch}
+    onChange={handleChange}
+    required
+  >
+    <option value="">Select your batch</option>
+    {generateBatchOptions(1999, new Date().getFullYear() - 4).map((batch) => (
+      <option key={batch} value={batch}>
+        {batch}
+      </option>
+    ))}
+  </select>
+</div>
 
             <div className="form-group">
               <label htmlFor="profession" className="form-label">Current Profession</label>
@@ -336,8 +347,8 @@ const fetchProfile = async () => {
             </div>
             
             <div>
-              <h5 style={{ marginBottom: '0.5rem', color: '#667eea' }}>Graduation Year</h5>
-              <p style={{ margin: 0, fontSize: '1.1rem' }}>{formData.graduationYear || 'Not provided'}</p>
+              <h5 style={{ marginBottom: '0.5rem', color: '#667eea' }}>Batch</h5>
+              <p style={{ margin: 0, fontSize: '1.1rem' }}>{formData.batch || 'Not provided'}</p>
             </div>
             
             <div>

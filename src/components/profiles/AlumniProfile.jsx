@@ -65,16 +65,20 @@ const AlumniProfile = () => {
 
   return (
     <div className="fade-in">
-      <div className="d-flex align-items-center gap-3 mb-4">
-        <Link to="/connections" className="btn btn-outline">
-          <ArrowLeft size={18} />
-          Back
-        </Link>
-        <div>
-          <h1 className="hero-title" style={{ margin: 0 }}>Alumni Profile</h1>
-          <p className="hero-subtitle" style={{ margin: 0 }}>@{username}</p>
-        </div>
+   <div className="d-flex align-items-center justify-content-between gap-3 mb-4">
+      <div>
+        <h1 className="hero-title" style={{ margin: 0 }}>Alumni Profile</h1>
+        <p className="hero-subtitle" style={{ margin: 0 }}>@{username}</p>
       </div>
+
+      <div>
+        <Link to="/connections" className="btn btn-outline d-inline-flex align-items-center">
+          <ArrowLeft size={18} />
+          <span className="ms-2">Back</span>
+        </Link>
+      </div>
+    </div>
+
 
       <div className="grid grid-1">
         {/* Enhanced Profile Header Card */}
@@ -171,9 +175,9 @@ const AlumniProfile = () => {
                   <Calendar size={18} style={{ color: '#d97706' }} />
                 </div>
                 <div>
-                  <p style={{ margin: 0, fontSize: '0.9rem', opacity: 0.7, fontWeight: '500' }}>Graduation Year</p>
+                  <p style={{ margin: 0, fontSize: '0.9rem', opacity: 0.7, fontWeight: '500' }}>Batch</p>
                   <p style={{ margin: 0, fontWeight: '600', fontSize: '1.1rem' }}>
-                    {profile.graduationYear || 'Not specified'}
+                    {profile.batch || 'Not specified'}
                   </p>
                 </div>
               </div>
