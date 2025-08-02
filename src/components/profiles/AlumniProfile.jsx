@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Shield, BookOpen, Calendar, Briefcase, Linkedin, User, Phone, MapPin, Building, Award, Target } from 'lucide-react';
+import { 
+  ArrowLeft, Shield, BookOpen, Calendar, Briefcase, User, Phone, MapPin, 
+  Building, Award, Target, Sparkles, FileText, Code, ExternalLink, Mail,
+  Trophy, Languages, Star
+} from 'lucide-react';
 import { profileService } from '../services/profileService';
 import { toast } from 'react-toastify';
 
@@ -38,25 +42,216 @@ const AlumniProfileView = () => {
     return null;
   };
 
-  const getCountryFlag = (countryCode) => {
-    const countryFlags = {
-      '+91': '🇮🇳',
-      '+1': '🇺🇸',
-      '+44': '🇬🇧',
-      '+86': '🇨🇳',
-      '+81': '🇯🇵',
-      '+49': '🇩🇪',
-      '+33': '🇫🇷',
-      '+39': '🇮🇹',
-      '+7': '🇷🇺',
-      '+55': '🇧🇷',
-      '+61': '🇦🇺',
-      '+82': '🇰🇷',
-      '+65': '🇸🇬',
-      '+971': '🇦🇪',
-      '+966': '🇸🇦'
-    };
-    return countryFlags[countryCode] || '🌍';
+  const cleanContent = (content) => {
+    if (!content) return '';
+    // Remove ** markers and clean up the content
+    return content.replace(/\*\*/g, '').trim();
+  };
+
+  const parseAIContent = (content) => {
+    if (!content) return null;
+
+    const sections = {};
+    const lines = content.split('\n').filter(line => line.trim());
+    let currentSection = null;
+    let currentContent = [];
+
+    lines.forEach(line => {
+      const trimmedLine = line.trim();
+      
+      // Skip introductory lines
+      if (trimmedLine.toLowerCase().startsWith('here\'s') || 
+          trimmedLine.toLowerCase().startsWith('information from') ||
+          trimmedLine.toLowerCase().startsWith('breakdown of')) {
+        return;
+      }
+
+      // Check if it's a section header - clean ** markers
+      if ((trimmedLine.startsWith('**') && trimmedLine.endsWith('**')) || 
+          (trimmedLine.endsWith(':') && !trimmedLine.startsWith('*') && !trimmedLine.startsWith('-') && !trimmedLine.startsWith('•'))) {
+        
+        // Save previous section
+        if (currentSection && currentContent.length > 0) {
+          sections[currentSection] = currentContent;
+        }
+        
+        // Start new section - remove ** markers
+        currentSection = cleanContent(trimmedLine.replace(':', ''));
+        currentContent = [];
+      }
+      // Check if it's a bullet point or list item
+      else if ((trimmedLine.startsWith('*') || trimmedLine.startsWith('-') || trimmedLine.startsWith('•')) && currentSection) {
+        const item = cleanContent(trimmedLine.replace(/^\*\s*/, '').replace(/^-\s*/, '').replace(/^•\s*/, ''));
+        if (item) {
+          currentContent.push(item);
+        }
+      }
+      // Check if it's regular content
+      else if (trimmedLine && currentSection) {
+        currentContent.push(cleanContent(trimmedLine));
+      }
+    });
+
+    // Add the last section
+    if (currentSection && currentContent.length > 0) {
+      sections[currentSection] = currentContent;
+    }
+
+    return sections;
+  };
+
+  const getSectionIcon = (sectionName) => {
+    const lowerName = sectionName.toLowerCase();
+    
+    // Contact related
+    if (/contact|phone|email|mobile/.test(lowerName)) return <Phone size={20} />;
+    
+    // Summary/About related
+    if (/summary|objective|about|profile/.test(lowerName)) return <Target size={20} />;
+    
+    // Skills related
+    if (/skill|technical|technology|tool|framework/.test(lowerName)) return <Code size={20} />;
+    
+    // Education related
+    if (/education|academic|qualification|degree|school|college|university/.test(lowerName)) return <BookOpen size={20} />;
+    
+    // Experience related
+    if (/experience|work|employment|job|career/.test(lowerName)) return <Briefcase size={20} />;
+    
+    // Projects related
+    if (/project/.test(lowerName)) return <Building size={20} />;
+    
+    // Certificates related
+    if (/certificate|certification|course|training/.test(lowerName)) return <Award size={20} />;
+    
+    // Achievements related
+    if (/achievement|award|honor|recognition/.test(lowerName)) return <Trophy size={20} />;
+    
+    // Languages related
+    if (/language/.test(lowerName)) return <Languages size={20} />;
+    
+    // Social/Links related
+    if (/link|social|github|linkedin|portfolio|website/.test(lowerName)) return <ExternalLink size={20} />;
+    
+    // Internships related
+    if (/internship|intern/.test(lowerName)) return <Calendar size={20} />;
+    
+    // Location related
+    if (/location|address|place/.test(lowerName)) return <MapPin size={20} />;
+    
+    return <Star size={20} />;
+  };
+
+  const getSectionGradient = (index) => {
+    const gradients = [
+      'var(--primary-gradient)',
+      'var(--accent-gradient)',
+      'var(--success-gradient)',
+      'var(--secondary-gradient)',
+      'var(--warning-gradient)',
+      'var(--dark-gradient)'
+    ];
+    return gradients[index % gradients.length];
+  };
+
+  const renderContentItem = (item, itemIndex) => {
+    // Check for URLs
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    if (urlRegex.test(item)) {
+      return (
+        <div key={itemIndex} className="content-item link-item">
+          {item.split(urlRegex).map((part, partIndex) => {
+            if (urlRegex.test(part)) {
+              return (
+                <a 
+                  key={partIndex} 
+                  href={part} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="content-link"
+                >
+                  {part}
+                  <ExternalLink size={14} />
+                </a>
+              );
+            }
+            return <span key={partIndex}>{part}</span>;
+          })}
+        </div>
+      );
+    }
+
+    // Check for email
+    const emailRegex = /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g;
+    if (emailRegex.test(item)) {
+      return (
+        <div key={itemIndex} className="content-item contact-item">
+          <Mail size={16} />
+          {item.split(emailRegex).map((part, partIndex) => {
+            if (emailRegex.test(part)) {
+              return (
+                <a key={partIndex} href={`mailto:${part}`} className="content-link">
+                  {part}
+                </a>
+              );
+            }
+            return <span key={partIndex}>{part}</span>;
+          })}
+        </div>
+      );
+    }
+
+    // Check for phone numbers
+    if (/\+?\d{10,}/.test(item) && (/phone|mobile|contact/.test(item.toLowerCase()) || item.startsWith('+'))) {
+      return (
+        <div key={itemIndex} className="content-item contact-item">
+          <Phone size={16} />
+          <span>{item}</span>
+        </div>
+      );
+    }
+
+    // Check for detailed items with descriptions - clean ** markers
+    if (item.includes(':') && item.split(':').length === 2) {
+      const parts = item.split(':');
+      return (
+        <div key={itemIndex} className="content-item detailed-item">
+          <div className="item-title">{cleanContent(parts[0])}</div>
+          <div className="item-description">{cleanContent(parts[1])}</div>
+        </div>
+      );
+    }
+
+    return (
+      <div key={itemIndex} className="content-item">
+        <div className="item-bullet"></div>
+        <span>{cleanContent(item)}</span>
+      </div>
+    );
+  };
+
+  const renderParsedContent = (parsedData) => {
+    if (!parsedData || Object.keys(parsedData).length === 0) {
+      return null;
+    }
+
+    return (
+      <div className="parsed-content-grid">
+        {Object.entries(parsedData).map(([sectionName, items], index) => (
+          <div key={index} className="content-section" style={{'--section-gradient': getSectionGradient(index)}}>
+            <div className="section-header">
+              <div className="section-icon">
+                {getSectionIcon(sectionName)}
+              </div>
+              <h4>{sectionName}</h4>
+            </div>
+            <div className="section-content">
+              {items.map((item, itemIndex) => renderContentItem(item, itemIndex))}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
   };
 
   if (loading) {
@@ -81,6 +276,8 @@ const AlumniProfileView = () => {
       </div>
     );
   }
+
+  const parsedContent = parseAIContent(profile.resumeExtractedContent);
 
   return (
     <div className="fade-in">
@@ -108,7 +305,7 @@ const AlumniProfileView = () => {
                   {getProfileImageUrl() && !imageError ? (
                     <img
                       src={getProfileImageUrl()}
-                      alt={`${profile.name || username}'s profile`}
+                      alt={`${profile.username}'s profile`}
                       className="profile-image"
                       onError={handleImageError}
                     />
@@ -124,7 +321,7 @@ const AlumniProfileView = () => {
             <div className="d-flex align-items-center justify-content-center gap-3 mt-3">
               <div style={{ textAlign: 'center' }}>
                 <h2 style={{ margin: 0, fontSize: '2rem', color: '#d97706', fontWeight: '700' }}>
-                  {profile.name || username}
+                  {profile.username}
                 </h2>
                 <p style={{ margin: '0.5rem 0', color: '#6c757d', fontSize: '1.1rem' }}>
                   @{username}
@@ -153,308 +350,34 @@ const AlumniProfileView = () => {
           </div>
         </div>
 
-        {/* Contact Information Card */}
-        {(profile.phone || profile.currentLocation) && (
+        {/* AI Extracted Resume Content */}
+        {profile.resumeExtractedContent && parsedContent && (
           <div className="card">
             <div className="card-header">
-              <div className="d-flex align-items-center gap-2">
-                <Phone size={20} style={{ color: '#10b981' }} />
-                <h3 className="card-title">Contact Information</h3>
+              <div className="content-header">
+                <h3 className="card-title">
+                  <Sparkles size={24} />
+                  AI Extracted Profile Information
+                </h3>
+                <div className="ai-badge">
+                  <Sparkles size={14} />
+                  Powered by AI
+                </div>
               </div>
             </div>
-            <div className="grid grid-2" style={{ padding: '1rem 0' }}>
-              {profile.phone && (
-                <div className="d-flex align-items-center gap-3">
-                  <div style={{ 
-                    backgroundColor: '#ecfdf5', 
-                    padding: '10px', 
-                    borderRadius: '10px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}>
-                    <Phone size={18} style={{ color: '#10b981' }} />
-                  </div>
-                  <div>
-                    <p style={{ margin: 0, fontSize: '0.9rem', opacity: 0.7, fontWeight: '500' }}>Phone Number</p>
-                    <p style={{ margin: 0, fontWeight: '600', fontSize: '1.1rem' }}>
-                      {getCountryFlag(profile.countryCode)} {profile.countryCode} {profile.phone}
-                    </p>
-                  </div>
-                </div>
-              )}
-              
-              {profile.currentLocation && (
-                <div className="d-flex align-items-center gap-3">
-                  <div style={{ 
-                    backgroundColor: '#ecfdf5', 
-                    padding: '10px', 
-                    borderRadius: '10px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}>
-                    <MapPin size={18} style={{ color: '#10b981' }} />
-                  </div>
-                  <div>
-                    <p style={{ margin: 0, fontSize: '0.9rem', opacity: 0.7, fontWeight: '500' }}>Current Location</p>
-                    <p style={{ margin: 0, fontWeight: '600', fontSize: '1.1rem' }}>
-                      {profile.currentLocation}
-                    </p>
-                  </div>
-                </div>
-              )}
+            <div className="extracted-content-section">
+              {renderParsedContent(parsedContent)}
             </div>
           </div>
         )}
 
-        {/* Academic and Professional Cards */}
-        <div className="grid grid-2">
+        {/* No Resume Data Message */}
+        {!profile.resumeExtractedContent && (
           <div className="card">
-            <div className="card-header">
-              <div className="d-flex align-items-center gap-2">
-                <BookOpen size={20} style={{ color: '#d97706' }} />
-                <h3 className="card-title">Academic Background</h3>
-              </div>
-            </div>
-            <div style={{ padding: '1rem 0' }}>
-              <div className="d-flex align-items-center gap-3 mb-3">
-                <div style={{ 
-                  backgroundColor: '#fef3c7', 
-                  padding: '10px', 
-                  borderRadius: '10px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}>
-                  <BookOpen size={18} style={{ color: '#d97706' }} />
-                </div>
-                <div>
-                  <p style={{ margin: 0, fontSize: '0.9rem', opacity: 0.7, fontWeight: '500' }}>Department</p>
-                  <p style={{ margin: 0, fontWeight: '600', fontSize: '1.1rem' }}>
-                    {profile.department || 'Not specified'}
-                  </p>
-                </div>
-              </div>
-              <div className="d-flex align-items-center gap-3 mb-3">
-                <div style={{ 
-                  backgroundColor: '#fef3c7', 
-                  padding: '10px', 
-                  borderRadius: '10px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}>
-                  <Calendar size={18} style={{ color: '#d97706' }} />
-                </div>
-                <div>
-                  <p style={{ margin: 0, fontSize: '0.9rem', opacity: 0.7, fontWeight: '500' }}>Batch</p>
-                  <p style={{ margin: 0, fontWeight: '600', fontSize: '1.1rem' }}>
-                    {profile.batch || 'Not specified'}
-                  </p>
-                </div>
-              </div>
-              {profile.higherEducation && (
-                <div className="d-flex align-items-center gap-3">
-                  <div style={{ 
-                    backgroundColor: '#fef3c7', 
-                    padding: '10px', 
-                    borderRadius: '10px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}>
-                    <Award size={18} style={{ color: '#d97706' }} />
-                  </div>
-                  <div>
-                    <p style={{ margin: 0, fontSize: '0.9rem', opacity: 0.7, fontWeight: '500' }}>Higher Education</p>
-                    <p style={{ margin: 0, fontWeight: '600', fontSize: '1.1rem' }}>
-                      {profile.higherEducation}
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="card">
-            <div className="card-header">
-              <div className="d-flex align-items-center gap-2">
-                <Briefcase size={20} style={{ color: '#10b981' }} />
-                <h3 className="card-title">Professional</h3>
-              </div>
-            </div>
-            <div style={{ padding: '1rem 0' }}>
-              {profile.profession && (
-                <div className="d-flex align-items-center gap-3 mb-3">
-                  <div style={{ 
-                    backgroundColor: '#ecfdf5', 
-                    padding: '10px', 
-                    borderRadius: '10px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}>
-                    <Briefcase size={18} style={{ color: '#10b981' }} />
-                  </div>
-                  <div>
-                    <p style={{ margin: 0, fontSize: '0.9rem', opacity: 0.7, fontWeight: '500' }}>Current Profession</p>
-                    <p style={{ margin: 0, fontWeight: '600', fontSize: '1.1rem' }}>
-                      {profile.profession}
-                    </p>
-                  </div>
-                </div>
-              )}
-              
-              {profile.companyName && (
-                <div className="d-flex align-items-center gap-3 mb-3">
-                  <div style={{ 
-                    backgroundColor: '#ecfdf5', 
-                    padding: '10px', 
-                    borderRadius: '10px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}>
-                    <Building size={18} style={{ color: '#10b981' }} />
-                  </div>
-                  <div>
-                    <p style={{ margin: 0, fontSize: '0.9rem', opacity: 0.7, fontWeight: '500' }}>Company</p>
-                    <p style={{ margin: 0, fontWeight: '600', fontSize: '1.1rem' }}>
-                      {profile.companyName}
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {profile.designation && (
-                <div className="d-flex align-items-center gap-3">
-                  <div style={{ 
-                    backgroundColor: '#ecfdf5', 
-                    padding: '10px', 
-                    borderRadius: '10px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}>
-                    <Target size={18} style={{ color: '#10b981' }} />
-                  </div>
-                  <div>
-                    <p style={{ margin: 0, fontSize: '0.9rem', opacity: 0.7, fontWeight: '500' }}>Designation</p>
-                    <p style={{ margin: 0, fontWeight: '600', fontSize: '1.1rem' }}>
-                      {profile.designation}
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Address Card */}
-        {profile.address && (
-          <div className="card">
-            <div className="card-header">
-              <div className="d-flex align-items-center gap-2">
-                <MapPin size={20} style={{ color: '#8b5cf6' }} />
-                <h3 className="card-title">Address</h3>
-              </div>
-            </div>
-            <div style={{ padding: '1rem 0' }}>
-              <div className="d-flex align-items-start gap-3">
-                <div style={{ 
-                  backgroundColor: '#f3e8ff', 
-                  padding: '10px', 
-                  borderRadius: '10px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}>
-                  <MapPin size={18} style={{ color: '#8b5cf6' }} />
-                </div>
-                <div>
-                  <p style={{ margin: 0, fontSize: '0.9rem', opacity: 0.7, fontWeight: '500' }}>Permanent Address</p>
-                  <p style={{ margin: 0, fontWeight: '600', fontSize: '1.1rem', lineHeight: '1.6' }}>
-                    {profile.address}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Skills Card */}
-        {profile.skills && (
-          <div className="card">
-            <div className="card-header">
-              <div className="d-flex align-items-center gap-2">
-                <Award size={20} style={{ color: '#f59e0b' }} />
-                <h3 className="card-title">Skills & Expertise</h3>
-              </div>
-            </div>
-            <div style={{ padding: '1rem 0' }}>
-              <div className="d-flex align-items-start gap-3">
-                <div style={{ 
-                  backgroundColor: '#fef3c7', 
-                  padding: '10px', 
-                  borderRadius: '10px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}>
-                  <Award size={18} style={{ color: '#f59e0b' }} />
-                </div>
-                <div>
-                  <p style={{ margin: 0, fontSize: '0.9rem', opacity: 0.7, fontWeight: '500' }}>Technical Skills</p>
-                  <p style={{ margin: 0, fontWeight: '600', fontSize: '1.1rem', lineHeight: '1.6' }}>
-                    {profile.skills}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* LinkedIn Profile Card */}
-        {profile.linkedin && (
-          <div className="card">
-            <div className="card-header">
-              <div className="d-flex align-items-center gap-2">
-                <Linkedin size={20} style={{ color: '#2563eb' }} />
-                <h3 className="card-title">LinkedIn Profile</h3>
-              </div>
-            </div>
-            <div style={{ padding: '1rem 0' }}>
-              <div className="d-flex align-items-center gap-3">
-                <div style={{ 
-                  backgroundColor: '#dbeafe', 
-                  padding: '10px', 
-                  borderRadius: '10px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}>
-                  <Linkedin size={18} style={{ color: '#2563eb' }} />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <p style={{ margin: 0, fontSize: '0.9rem', opacity: 0.7, fontWeight: '500' }}>Professional Network</p>
-                  <a
-                    href={profile.linkedin.startsWith('http') ? profile.linkedin : `https://linkedin.com/in/${profile.linkedin}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{
-                      color: '#2563eb',
-                      textDecoration: 'none',
-                      fontWeight: '600',
-                      fontSize: '1.1rem'
-                    }}
-                    onMouseOver={(e) => e.target.style.textDecoration = 'underline'}
-                    onMouseOut={(e) => e.target.style.textDecoration = 'none'}
-                  >
-                    {profile.linkedin}
-                  </a>
-                </div>
-              </div>
+            <div className="no-content-message">
+              <FileText size={48} />
+              <h4>No Resume Data Available</h4>
+              <p>This alumni hasn't uploaded their resume yet or the resume data is being processed.</p>
             </div>
           </div>
         )}
