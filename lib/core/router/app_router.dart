@@ -7,7 +7,6 @@ import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/register_page.dart';
 import '../../features/dashboard/presentation/pages/dashboard_page.dart';
-/*
 import '../../features/profile/presentation/pages/profile_page.dart';
 import '../../features/profile/presentation/pages/student_profile_page.dart';
 import '../../features/profile/presentation/pages/alumni_profile_page.dart';
@@ -21,7 +20,6 @@ import '../../features/webinar/presentation/pages/create_webinar_page.dart';
 import '../../features/webinar/presentation/pages/join_webinar_page.dart';
 import '../../features/admin/presentation/pages/admin_dashboard_page.dart';
 import '../../features/faculty/presentation/pages/verify_students_page.dart';
-*/
 
 import '../../shared/presentation/widgets/main_layout.dart';
 
@@ -69,7 +67,6 @@ class AppRouter {
             path: '/dashboard',
             builder: (context, state) => const DashboardPage(),
           ),
-          /*
 GoRoute(
   path: '/profile',
   builder: (context, state) => const ProfilePage(),
@@ -132,7 +129,6 @@ GoRoute(
   path: '/verify-students',
   builder: (context, state) => const VerifyStudentsPage(),
 ),
-*/
         ],
       ),
     ],
