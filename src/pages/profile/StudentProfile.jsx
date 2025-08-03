@@ -13,6 +13,7 @@ const StudentProfile = () => {
     skills: '',
     github: '',
     linkedin:'',
+    graduationYear:'',
     enrollNumber:'',
     profileImage: null
   });
@@ -87,7 +88,8 @@ const StudentProfile = () => {
       skills: formData.skills,
       github: formData.github,
       linkedin:formData.linkedin,
-      enrollNumber:formData.enrollNumber
+      enrollNumber:formData.enrollNumber,
+      graduationYear: formData.graduationYear // ✅ ADD THIS
     };
 
     formDataToSend.append(
@@ -287,6 +289,20 @@ const StudentProfile = () => {
                 <option value="5">5th Year</option>
               </select>
             </div>
+            <div className="form-group">
+  <label htmlFor="graduationYear" className="form-label">Graduation Period</label>
+  <input
+    type="text"
+    id="graduationYear"
+    name="graduationYear"
+    className="form-control"
+    value={formData.graduationYear}
+    onChange={handleChange}
+    required
+    placeholder="September 2023 - April 2027"
+  />
+</div>
+
 
             <div className="form-group">
               <label htmlFor="skills" className="form-label">Skills</label>
@@ -371,6 +387,11 @@ const StudentProfile = () => {
             <div>
               <h5 style={{ marginBottom: '0.5rem', color: '#667eea' }}>Enroll Number</h5>
               <p style={{ margin: 0, fontSize: '1.1rem' }}>{formData.enrollNumber|| 'Not provided'}</p>
+            </div>
+
+              <div>
+              <h5 style={{ marginBottom: '0.5rem', color: '#667eea' }}>Graduation Year</h5>
+              <p style={{ margin: 0, fontSize: '1.1rem' }}>{formData.graduationYear || 'Not provided'}</p>
             </div>
             
             <div>
